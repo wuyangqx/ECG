@@ -139,19 +139,23 @@ def generate_samples_from_records(records, window_duration, stride_duration, aux
                                   freq_to_keeprate_map = {}):
     samples = cut_by_moving_window(records, window_duration=window_duration, stride_duration=stride_duration, 
                                    freq_to_keeprate_map = freq_to_keeprate_map)
+    
+    standardize_sample_wave(samples)
     populate_label(samples, auxnote_label_map)
     print(f"Generated {len(samples)} samples from {len(records)} records.")
     return samples
 
-def standardize_wave(df_wave):
-    df_wave['MLII'] = (df_wave['MLII'] - df_wave["MLII"].mean()) / df_wave["MLII"].std()
-    return df_wave
+def standardize_sample_wave(samples):
+    for sample in samples:
+        df_wave = sample['df_wave']
+        df_wave['MLII'] = (df_wave['MLII'] - df_wave["MLII"].mean()) / df_wave["MLII"].std()
+        sample['df_wave'] = df_wave
 
 def generate_inputs_from_samples(samples):
     X = []
     y = []
     for sample in tqdm.tqdm(samples):
-        df_wave = standardize_wave(sample['df_wave'])
+        df_wave = sample['df_wave']
         df_label = sample['df_label']
     
         X.append(df_wave['MLII'].values)
