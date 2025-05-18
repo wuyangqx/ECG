@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
+from collections import Counter
 
 def plot_wave(records, idx, time_interval = None, title=None):
     record = records[idx]
@@ -11,6 +12,15 @@ def plot_wave(records, idx, time_interval = None, title=None):
     fig.add_trace(go.Scatter(x=dfP['Time'], y=dfP['MLII'], mode='lines', name='MLII'))
     fig.update_layout(title=title + f" sample {idx}", xaxis_title='Time (s)', yaxis_title='mV')
     fig.show()
+
+def print_records_annotations(records):
+    # loop through all records, counts the labels in df_ann
+    annotations = []
+    for record in records:
+        df_ann = record['df_ann']
+        annotations.extend(df_ann['AuxNote'].tolist())
+    counter = Counter(annotations)
+    print(counter)
 
 def plot_accuracy_and_loss(history, X_test, y_test, model, accuracy_keys = ['custom_accuracy', 'val_custom_accuracy'], loss_keys = ['loss', 'val_loss']):
     scores = model.evaluate((X_test), y_test, verbose=0)

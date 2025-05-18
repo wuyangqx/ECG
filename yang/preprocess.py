@@ -6,6 +6,23 @@ import tqdm
 RESAMPLE_FREQUENCY = 200  # Hz
 BAND_PASS = (0.5, 45)  # Hz
 
+def remove_auxnote_by_identifier(records, start_id='(V'):
+    """
+    Remove all records with the given identifier in df_ann['AuxNote']
+    """
+    for record in records:
+        df_ann = record['df_ann']
+        df_ann = df_ann[~df_ann['AuxNote'].str.startswith(start_id)]
+        record['df_ann'] = df_ann
+    return records
+
+def override_auxnote(records, override_map):
+    for record in records:
+        df_ann = record['df_ann']
+        df_ann['AuxNote'] = df_ann['AuxNote'].apply(lambda x: override_map[x])
+        record['df_ann'] = df_ann
+    return records
+
 def frequency_resampling(records, resample_fs=RESAMPLE_FREQUENCY):
     for record in tqdm.tqdm(records):
         df_wave = record['df_wave']
@@ -30,24 +47,34 @@ def bandpass_filtering(records, lowcut=BAND_PASS[0], highcut=BAND_PASS[1], order
 
 def merge_annotation_to_wave(records):
     for record in tqdm.tqdm(records):
-        df_wave = record['df_wave']
-        df_ann = record['df_ann']
+        df_wave = record['df_wave'].copy()
+        df_ann = record['df_ann'].copy()
         df1 = pd.merge(df_wave, df_ann, how='outer', on='Time')
         df1['AuxNote'] = df1['AuxNote'].ffill()
         df2 = pd.merge(df_wave, df1[['Time', 'AuxNote']], how='left', on='Time')
         df2 = df2.dropna(subset=['AuxNote'])
-        record['df_wave'] = df2
+        record['df_wave'] = df2.copy()
+    return records
 
-def cut_by_moving_window(records, window_duration, stride_duration):
+def cut_by_moving_window(records, window_duration, stride_duration, 
+                         freq_to_keeprate_map = {}):
     samples = []
     for record in tqdm.tqdm(records):
         sample_size = int(record['sample_frequency'] * window_duration)
         stride_size = int(record['sample_frequency'] * stride_duration)
-        df_wave = record['df_wave']
+        df_wave = record['df_wave'].copy()
         total_size = df_wave.shape[0]
         end = total_size - sample_size + 1
         for i in range(0, end, stride_size):
             df_sample = df_wave.iloc[i:i + sample_size].copy()
+
+            # randomly drop samples based on the number of events
+            num_events = len(df_sample['AuxNote'].unique())
+            keep_rate = freq_to_keeprate_map.get(num_events, 1)
+            
+            if np.random.rand() > keep_rate:
+                continue
+
             samples.append({
                 "df_wave" : df_sample,
                 "sample_frequency" : record['sample_frequency'],
@@ -85,16 +112,16 @@ def onehot_to_class(Y_onehot, num_classes):
 
 
 
-def populate_label(samples):
+def populate_label(samples, auxnote_label_map):
     for sample in tqdm.tqdm(samples):
         df_wave = sample['df_wave'].copy()
         time_min = df_wave['Time'].min()
         df_wave['Time1'] = df_wave['Time'] - time_min # zero shift
         df_wave['Second'] = df_wave['Time1'].apply(lambda x: int(x))
         dfL = df_wave[['Second', 'AuxNote']].groupby('Second').agg("first").reset_index() # labels
-        dfL['label'] = dfL['AuxNote'].apply(lambda x: map_aux_note_to_label(x))
+        dfL['label'] = dfL['AuxNote'].apply(lambda x: auxnote_label_map[x])
         sample['df_label'] = dfL[['label']]
-
+        sample['labels'] = "".join(sorted([str(label) for label in dfL['label'].unique()]))
 
 
 def preprocess_records(records, frequency_resample, bandpass_filter):
@@ -104,13 +131,15 @@ def preprocess_records(records, frequency_resample, bandpass_filter):
         #analysis.plot_wave(records, plot_idx, time_interval=[0,1], title='Frequency Resampling')
     if bandpass_filter:
         records = bandpass_filtering(records)
-        #analysis.plot_wave(records, plot_idx, time_interval=[0,1], title='Bandpass Filtering')   
+        #analysis.plot_wave(records, plot_idx, time_interval=[0,1], title='Bandpass Filtering')
+    records = merge_annotation_to_wave(records)
     return records
 
-def generate_samples_from_records(records, window_duration, stride_duration):
-    merge_annotation_to_wave(records)
-    samples = cut_by_moving_window(records, window_duration=window_duration, stride_duration=stride_duration)
-    populate_label(samples)
+def generate_samples_from_records(records, window_duration, stride_duration, auxnote_label_map, 
+                                  freq_to_keeprate_map = {}):
+    samples = cut_by_moving_window(records, window_duration=window_duration, stride_duration=stride_duration, 
+                                   freq_to_keeprate_map = freq_to_keeprate_map)
+    populate_label(samples, auxnote_label_map)
     print(f"Generated {len(samples)} samples from {len(records)} records.")
     return samples
 
