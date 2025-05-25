@@ -16,6 +16,16 @@ def remove_auxnote_by_identifier(records, start_id='(V'):
         record['df_ann'] = df_ann
     return records
 
+def filter_auxnote_by_identifier(records, start_id='('):
+    """
+    Filter all records with the given identifier in df_ann['AuxNote']
+    """
+    for record in records:
+        df_ann = record['df_ann']
+        df_ann = df_ann[df_ann['AuxNote'].str.startswith(start_id)]
+        record['df_ann'] = df_ann
+    return records
+
 def override_auxnote(records, override_map):
     for record in records:
         df_ann = record['df_ann']
