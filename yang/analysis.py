@@ -10,7 +10,7 @@ def plot_wave(records, idx, time_interval = None, title=None):
         dfP = dfP[(dfP['Time'] >= time_interval[0]) & (dfP['Time'] <= time_interval[1])]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dfP['Time'], y=dfP['MLII'], mode='lines', name='MLII'))
-    fig.update_layout(title=title + f" sample {idx}", xaxis_title='Time (s)', yaxis_title='mV')
+    fig.update_layout(title=title + f" dataset {record['data_name']} record {record['record_name']}", xaxis_title='Time (s)', yaxis_title='mV')
     fig.show()
 
 def print_records_annotations(records):
