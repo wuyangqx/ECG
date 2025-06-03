@@ -20,9 +20,5 @@ if __name__ == "__main__":
                    360, "MLII")
     
     print(data.sample_frequency)
-
-
-datasets = [Dataset("c:/Users/wuyan/Projects/wfdb-python/yang/data", "mitdb", 360, "MLII", ['102', '104', '107', '217']),  # excluding paced records
-           Dataset("c:/Users/wuyan/Projects/wfdb-python/yang/data", "afdb", 250, "ECG1")]
     
 

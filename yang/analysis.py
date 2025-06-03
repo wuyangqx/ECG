@@ -13,6 +13,16 @@ def plot_wave(records, idx, time_interval = None, title=None):
     fig.update_layout(title=title + f" dataset {record['data_name']} record {record['record_name']}", xaxis_title='Time (s)', yaxis_title='mV')
     fig.show()
 
+def plot_wave_by_record(records, time_window):
+    fig = go.Figure()
+    for record in records:
+        df = record['df_wave'].copy()
+        df = df[(df['Time'] >= time_window[0]) & (df['Time'] <= time_window[1])] # seconds
+        fig.add_trace(go.Scatter(x=df['Time'], y=df['MLII'], mode='lines', name=record['record_name']))
+    fig.update_layout(xaxis_title='Time')
+    fig.show()
+    
+
 def print_records_annotations(records):
     # loop through all records, counts the labels in df_ann
     annotations = []
